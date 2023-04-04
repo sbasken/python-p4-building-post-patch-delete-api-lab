@@ -30,17 +30,87 @@ def bakeries():
     )
     return response
 
-@app.route('/bakeries/<int:id>')
+@app.route('/bakeries/<int:id>', methods=['GET','PATCH'])
 def bakery_by_id(id):
+    bakery = Bakery.query.filter(Bakery.id==id).first()
+    
+    if bakery == None:
+        response_body = {
+            "message": "This record does not exist in our database. Please try again."
+        }
+        response = make_response(jsonify(response_body), 404)
 
-    bakery = Bakery.query.filter_by(id=id).first()
-    bakery_serialized = bakery.to_dict()
+        return response
+    else:
+        if request.method == 'GET':
+            bakery_serialized = bakery.to_dict()
+
+            response = make_response(
+                bakery_serialized,
+                200
+            )
+            return response
+        
+        elif request.method == 'PATCH':
+            bakery = Bakery.query.filter(Bakery.id == id).first()
+            
+            for attr in request.form:
+                setattr(bakery, attr, request.form.get(attr))
+            
+            db.session.add(bakery)
+            db.session.commit()
+
+            bakery_dict = bakery.to_dict()
+
+            response = make_response(
+                jsonify(bakery_dict),
+                200
+            )
+            return response
+
+@app.route('/baked_goods', methods=['POST'])
+def create_baked_goods():  
+    new_baked_goods = BakedGood(
+        name = request.form.get('name'),
+        price = request.form.get('price')
+    )
+    db.session.add(new_baked_goods)
+    db.session.commit()
+
+    new_baked_goods_serialized = new_baked_goods.to_dict()
 
     response = make_response(
-        bakery_serialized,
-        200
+        jsonify(new_baked_goods_serialized),
+        201
     )
     return response
+
+@app.route('/baked_goods/<int:id>', methods=['DELETE'])
+def delete_baked_goods(id):
+    baked_goods = BakedGood.query.filter(BakedGood.id==id).first()
+
+    if baked_goods == None:
+        response_body = {
+            "message": "This records does not exist in our database. Please try again."
+        }
+        response = make_response(jsonify(response_body), 404)
+        return response
+    
+    else:
+        if request.method == 'DELETE':
+            db.session.delete(baked_goods)
+            db.session.commit()
+
+            response_body = {
+                "delete_successful": True,
+                "message": "Baked_goods deleted."
+            }
+            response = make_response(
+                response_body,
+                200
+            )
+        return response
+
 
 @app.route('/baked_goods/by_price')
 def baked_goods_by_price():
